@@ -22,7 +22,7 @@ function FilterBooks({ activeFilter }) {
       <button
         onClick={() => setFilter('all')}
         className={twMerge(
-          'px-2 py-1 bg-secondary-100 rounded-md',
+          'px-2 py-1 bg-secondary-100 rounded-md hover:bg-secondary-200',
           (activeFilter === 'all' || !activeFilter) && 'bg-secondary-500'
         )}
       >
@@ -31,7 +31,7 @@ function FilterBooks({ activeFilter }) {
       <button
         onClick={() => setFilter('currently-reading')}
         className={twMerge(
-          'px-2 py-1 bg-secondary-100 rounded-md',
+          'px-2 py-1 bg-secondary-100 rounded-md hover:bg-secondary-200',
           activeFilter === 'currently-reading' && 'bg-secondary-500'
         )}
       >
@@ -40,7 +40,7 @@ function FilterBooks({ activeFilter }) {
       <button
         onClick={() => setFilter('want-read')}
         className={twMerge(
-          'px-2 py-1 bg-secondary-100 rounded-md',
+          'px-2 py-1 bg-secondary-100 rounded-md hover:bg-secondary-200',
           activeFilter === 'want-read' && 'bg-secondary-500'
         )}
       >
@@ -49,7 +49,7 @@ function FilterBooks({ activeFilter }) {
       <button
         onClick={() => setFilter('read')}
         className={twMerge(
-          'px-2 py-1 bg-secondary-100 rounded-md',
+          'px-2 py-1 bg-secondary-100 rounded-md hover:bg-secondary-200',
           activeFilter === 'read' && 'bg-secondary-500'
         )}
       >

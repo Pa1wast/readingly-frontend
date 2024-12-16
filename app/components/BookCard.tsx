@@ -18,7 +18,9 @@ async function BookCard({ book }) {
         <p className="text-xs w-32 mb-1 group-hover:underline group-hover:text-primary-400">
           {book.title.length > 40 ? book.title.slice(0, 40).concat('...') : book.title}
         </p>
-        <p className="text-xs w-32 text-gray-700">{book.author_name?.join(', ') || 'Unknown'}</p>
+        <p className="text-xs w-32 text-gray-700">
+          {book.author?.replace(/\[|\]|"/gim, '') || 'Unknown'}
+        </p>
       </Link>
 
       <BookCardActions id={book.id} />

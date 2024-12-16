@@ -30,31 +30,9 @@ function DropdownTrigger({ children, className }: { children: ReactNode; classNa
 }
 
 function DropdownContent({ children, className }: { children: ReactNode; className?: string }) {
-  const ref = useRef();
-  const { isOpen, setIsOpen } = useDropdown();
+  const { isOpen } = useDropdown();
 
-  useEffect(() => {
-    function handleClick(e) {
-      const clickedEl = e.target;
-
-      if (!isOpen && ref.current !== clickedEl) document.removeEventListener('click', handleClick);
-
-      if (isOpen && ref.current !== clickedEl) setIsOpen(false);
-    }
-
-    document.addEventListener('click', handleClick);
-
-    return () => {
-      document.removeEventListener('click', handleClick);
-    };
-  }, [isOpen, ref, setIsOpen]);
-
-  if (isOpen)
-    return (
-      <div className={twMerge('', className)} ref={ref}>
-        {children}
-      </div>
-    );
+  if (isOpen) return <div className={twMerge('', className)}>{children}</div>;
 }
 
 export { Dropdown, DropdownContent, DropdownTrigger, useDropdown };
