@@ -7,15 +7,22 @@ import { Dropdown, DropdownContent, DropdownTrigger } from '../components/Dropdo
 import SelectGenre from '../components/SelectGenre';
 import { getGenres } from '../lib/actions';
 import SearchGenre from '../components/SearchGenre';
+import { auth } from '../lib/auth';
 
 export const metadata = { title: 'Readingly - My Books' };
 
 export default async function Page({ searchParams }) {
   const params = await searchParams;
 
+  const session = await auth();
+
+  if (!session) return null;
+
   const genreSearchTerm = params.genreSearchTerm;
 
   const genres = await getGenres();
+
+  const selectedGenres = session.user?.favouriteGenres;
 
   let searchedGenres;
 
@@ -27,20 +34,12 @@ export default async function Page({ searchParams }) {
   return (
     <div className="md:px-6 py-8  px-4 sm:px-6 space-y-10">
       <div className="flex items-center justify-between flex-wrap gap-6">
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-6 flex-wrap">
           <h1 className="text-2xl  uppercase text-primary-900 font-semibold">My Books</h1>
 
-          {/* <Suspense
-            fallback={
-              <Loader className="rotate absolute  right-[50%] mt-40 size-12 text-primary-300  translate-x-[-50%] translate-y-[-50%]" />
-            }
-          >
-            <UserGenreList />
-          </Suspense> */}
-
           <Dropdown>
-            <DropdownTrigger className="bg-secondary-500 flex gap-2 items-center rounded-md px-4 py-1 font-semibold text-neutral-900 hover:bg-secondary-400">
-              Favourite Genres
+            <DropdownTrigger className="border border-secondary-500 flex gap-2 items-center rounded-md px-4 py-1 font-semibold text-neutral-900 hover:bg-secondary-400">
+              Select Your Favourite Genres
             </DropdownTrigger>
 
             <DropdownContent>
@@ -65,7 +64,13 @@ export default async function Page({ searchParams }) {
                       <p>No genre found!</p>
                     ) : (
                       displayedGenres?.map(genre => (
-                        <SelectGenre value={genre.name} title={genre.name} key={genre.id} />
+                        <SelectGenre
+                          selectedGenres={selectedGenres}
+                          id={genre.id}
+                          value={genre.name}
+                          title={genre.name}
+                          key={genre.id}
+                        />
                       ))
                     )}
                   </Suspense>
@@ -75,7 +80,7 @@ export default async function Page({ searchParams }) {
           </Dropdown>
         </div>
 
-        <FilterBooks activeFilter={searchParams?.filter} />
+        <FilterBooks activeFilter={params?.filter} />
       </div>
 
       <Suspense

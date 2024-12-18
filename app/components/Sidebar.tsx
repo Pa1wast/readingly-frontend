@@ -25,7 +25,7 @@ export default async function Sidebar() {
           !session?.user && 'md:mt-auto'
         )}
       >
-        &copy; All rights reserved 2024
+        &copy; All rights reserved {new Date().getFullYear()}
       </p>
     </div>
   );

@@ -4,6 +4,7 @@ import { supabase } from '@/app/lib/supabase';
 import { auth, signIn, signOut } from '@/app/lib/auth';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { use } from 'react';
 
 export async function getSetBookGenre(book, genres) {
   const subjects = book.subject;
@@ -124,8 +125,6 @@ export async function getOriginalBooks() {
 
         const { error } = await supabase.from('books').insert([newBookFormat]);
 
-        console.log('Insert book error', error);
-
         return book;
       })
     );
@@ -162,13 +161,14 @@ export async function getUserBooks() {
     cur: [],
     wantTo: [],
     read: [],
+    notInterested: [],
   };
 
   const session = await auth();
 
   if (!session) return userBooks;
 
-  const { currentlyReadingBooks, wantToReadBooks, readBooks } = session.user;
+  const { currentlyReadingBooks, wantToReadBooks, readBooks, notInterestedBooks } = session.user;
 
   try {
     const { data: books, error } = await supabase.from('books').select('*');
@@ -181,6 +181,7 @@ export async function getUserBooks() {
     userBooks.cur = books.filter(book => currentlyReadingBooks.includes(book.id));
     userBooks.wantTo = books.filter(book => wantToReadBooks.includes(book.id));
     userBooks.read = books.filter(book => readBooks.includes(book.id));
+    userBooks.notInterested = books.filter(book => notInterestedBooks.includes(book.id));
 
     return userBooks;
   } catch (error) {
@@ -244,12 +245,14 @@ export async function toggleBookShelf(formData) {
     const wantToReadBooks = user.wantToReadBooks || [];
     const currentlyReadingBooks = user.currentlyReadingBooks || [];
     const readBooks = user.readBooks || [];
+    const notInterestedBooks = user.notInterestedBooks || [];
 
     const bookIdAsString = String(bookId);
 
     let updatedWantToRead = wantToReadBooks.filter(id => String(id) !== bookIdAsString);
     let updatedCurrentlyReading = currentlyReadingBooks.filter(id => String(id) !== bookIdAsString);
     let updatedReadBooks = readBooks.filter(id => String(id) !== bookIdAsString);
+    let updatedNotInterestedBooks = notInterestedBooks.filter(id => String(id) !== bookIdAsString);
 
     if (shelf === 'want-to-read' && !updatedWantToRead.includes(bookIdAsString)) {
       updatedWantToRead.push(bookIdAsString);
@@ -257,6 +260,8 @@ export async function toggleBookShelf(formData) {
       updatedCurrentlyReading.push(bookIdAsString);
     } else if (shelf === 'read' && !updatedReadBooks.includes(bookIdAsString)) {
       updatedReadBooks.push(bookIdAsString);
+    } else if (shelf === 'not-interested' && !updatedNotInterestedBooks.includes(bookIdAsString)) {
+      updatedNotInterestedBooks.push(bookIdAsString);
     } else if (!['want-to-read', 'currently-reading', 'read'].includes(shelf)) {
       throw new Error(`Invalid shelf name: ${shelf}`);
     }
@@ -267,6 +272,7 @@ export async function toggleBookShelf(formData) {
         want_to_read_books: updatedWantToRead,
         currently_reading_books: updatedCurrentlyReading,
         read_books: updatedReadBooks,
+        not_interested_books: updatedNotInterestedBooks,
       })
       .eq('id', user.userId);
 
@@ -306,12 +312,16 @@ export async function removeFromAllShelves(formData) {
     const wantToReadBooks = user.wantToReadBooks || [];
     const currentlyReadingBooks = user.currentlyReadingBooks || [];
     const readBooks = user.readBooks || [];
+    const notInterestedBooks = user.notInterestedBooks || [];
 
     const updatedWantToReadBooks = wantToReadBooks.filter(id => String(id) !== bookIdAsString);
     const updatedCurrentlyReadingBooks = currentlyReadingBooks.filter(
       id => String(id) !== bookIdAsString
     );
     const updatedReadBooks = readBooks.filter(id => String(id) !== bookIdAsString);
+    const updatedNotInterestedBooks = notInterestedBooks.filter(
+      id => String(id) !== bookIdAsString
+    );
 
     const { error: updateError } = await supabase
       .from('users')
@@ -319,6 +329,7 @@ export async function removeFromAllShelves(formData) {
         want_to_read_books: updatedWantToReadBooks,
         currently_reading_books: updatedCurrentlyReadingBooks,
         read_books: updatedReadBooks,
+        not_interested_books: updatedNotInterestedBooks,
       })
       .eq('id', user.userId);
 
@@ -332,6 +343,7 @@ export async function removeFromAllShelves(formData) {
       wantToReadBooks: updatedWantToReadBooks,
       currentlyReadingBooks: updatedCurrentlyReadingBooks,
       readBooks: updatedReadBooks,
+      notInterestedBooks: updatedNotInterestedBooks,
     };
   } catch (error) {
     console.error('Error removing book from all shelves:', error.message);
@@ -355,7 +367,7 @@ export async function rateBook(bookId, rating) {
   if (!user) return;
 
   try {
-    const ratedBooks = user.rated_books || [];
+    const ratedBooks = user.ratedBooks || [];
 
     // Fetch the book from the database
     const { data: books, error: fetchBookError } = await supabase
@@ -370,25 +382,20 @@ export async function rateBook(bookId, rating) {
 
     const bookRatings = books?.ratings || [];
 
-    // Find the user's rating in the book's ratings
     const userRatingIndex = bookRatings.findIndex(r => r.userId === user.userId);
 
     if (rating === 0) {
-      // Remove the rating if set to 0
       if (userRatingIndex !== -1) {
-        bookRatings.splice(userRatingIndex, 1); // Remove the user's rating
+        bookRatings.splice(userRatingIndex, 1);
       }
     } else {
       if (userRatingIndex !== -1) {
-        // Update the user's existing rating
         bookRatings[userRatingIndex].rating = rating;
       } else {
-        // Add the user's new rating
         bookRatings.push({ userId: user.userId, rating });
       }
     }
 
-    // Update the book's ratings in the database
     const { error: updateBookError } = await supabase
       .from('books')
       .update({ ratings: bookRatings })
@@ -398,25 +405,27 @@ export async function rateBook(bookId, rating) {
       throw new Error('Could not update book ratings: ' + updateBookError.message);
     }
 
-    // Update the user's rated books
-    const bookIndex = ratedBooks.findIndex(book => book.bookId === bookId);
+    const updatedRatedBooks = ratedBooks
+      .map(book => {
+        if (book.bookId === bookId) {
+          if (rating === 0) {
+            return null;
+          } else {
+            return { ...book, rating: parseInt(rating, 10) };
+          }
+        } else {
+          return book;
+        }
+      })
+      .filter(Boolean);
 
-    if (rating === 0) {
-      // Remove the book from user's rated_books if rating is 0
-      if (bookIndex !== -1) {
-        ratedBooks.splice(bookIndex, 1);
-      }
-    } else {
-      if (bookIndex !== -1) {
-        ratedBooks[bookIndex].rating = parseInt(rating, 10);
-      } else {
-        ratedBooks.push({ bookId, rating: parseInt(rating, 10) });
-      }
+    if (!updatedRatedBooks.some(book => book.bookId === bookId)) {
+      updatedRatedBooks.push({ bookId, rating: parseInt(rating, 10) });
     }
 
     const { error: updateUserError } = await supabase
       .from('users')
-      .update({ rated_books: ratedBooks })
+      .update({ rated_books: updatedRatedBooks })
       .eq('id', user.userId);
 
     if (updateUserError) {
@@ -426,7 +435,7 @@ export async function rateBook(bookId, rating) {
     revalidatePath('/');
 
     return {
-      rated_books: ratedBooks,
+      rated_books: updatedRatedBooks,
       book_ratings: bookRatings,
     };
   } catch (error) {
@@ -545,6 +554,118 @@ export async function searchBooks(searchTerm) {
     return books;
   } catch (error) {
     console.error('Error searching books:', error.message);
+    throw error;
+  }
+}
+
+export async function toggleGenre(genreId) {
+  const session = await auth();
+
+  if (!session) return;
+
+  const userId = session.user.userId;
+
+  if (!genreId || !userId) {
+    console.error('Genre ID or User ID is missing');
+    return;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('users')
+      .select('favourite_genres')
+      .eq('id', userId)
+      .single();
+
+    if (error) throw error;
+
+    const favouriteGenres = data?.favourite_genres || [];
+
+    let updatedGenres;
+
+    if (favouriteGenres.includes(genreId)) {
+      updatedGenres = favouriteGenres.filter(id => id !== genreId);
+    } else {
+      updatedGenres = [...favouriteGenres, genreId];
+    }
+
+    const { error: updateError } = await supabase
+      .from('users')
+      .update({ favourite_genres: updatedGenres })
+      .eq('id', userId);
+
+    if (updateError) throw updateError;
+
+    revalidatePath('/mybooks');
+  } catch (err) {
+    console.error('Error toggling genre:', err.message);
+  }
+}
+
+// Recommendations
+
+export async function getHighlyRatedBooks() {
+  const session = await auth();
+
+  if (!session) return;
+
+  const userId = session.user.userId;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/recommend/highly-rated/${userId}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.data;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching highly-rated books:', error);
+    throw error;
+  }
+}
+
+export async function getFavouriteGenresBooks() {
+  const session = await auth();
+
+  if (!session) return;
+
+  const userId = session.user.userId;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/recommend/favourite-genres/${userId}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.data;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching favourite-genres books:', error);
+    throw error;
+  }
+}
+
+export async function getBasedOnReadBooks() {
+  const session = await auth();
+
+  if (!session) return;
+
+  const userId = session.user.userId;
+
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/recommend/similar-to-read/${userId}`);
+
+    if (response.ok) {
+      const data = await response.json();
+      return data.data;
+    } else {
+      return null;
+    }
+  } catch (error) {
+    console.error('Error fetching favourite-genres books:', error);
     throw error;
   }
 }

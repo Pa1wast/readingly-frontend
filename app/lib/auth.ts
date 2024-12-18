@@ -30,9 +30,12 @@ const authConfig = {
       session.user.wantToReadBooks = user.want_to_read_books;
       session.user.currentlyReadingBooks = user.currently_reading_books;
       session.user.readBooks = user.read_books;
+      session.user.ratedBooks = user.rated_books || [];
+
+      session.user.notInterestedBooks = user.not_interested_books || [];
 
       session.user.reviews = user.reviews || [];
-      session.user.ratedBooks = user.rated_books || [];
+      session.user.favouriteGenres = user.favourite_genres || [];
 
       return session;
     },

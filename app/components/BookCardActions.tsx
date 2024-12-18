@@ -1,9 +1,7 @@
 import { twMerge } from 'tailwind-merge';
-import { removeFromAllShelves, RemoveFromShelf, toggleBookShelf } from '../lib/actions';
+import { removeFromAllShelves, toggleBookShelf } from '../lib/actions';
 import { auth } from '../lib/auth';
 import SubmitButton from './SubmitButton';
-import { revalidatePath } from 'next/cache';
-import { XCircle } from 'lucide-react';
 
 async function BookCardActions({ id }) {
   const session = await auth();

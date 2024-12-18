@@ -9,6 +9,7 @@ export default async function UserBooksList({ filter }) {
   if (filter === 'currently-reading') allBooks = [...books?.cur];
   else if (filter === 'want-read') allBooks = [...books?.wantTo];
   else if (filter === 'read') allBooks = [...books?.read];
+  else if (filter === 'not-interested') allBooks = [...books?.notInterested];
   else allBooks = [...books?.cur, ...books?.wantTo, ...books?.read];
 
   return (
@@ -16,7 +17,7 @@ export default async function UserBooksList({ filter }) {
       {allBooks.length ? (
         allBooks.map(book => <BookCard book={book} key={book.id} />)
       ) : (
-        <p className="text-secondary-900 col-span-6">You have no books in your library!</p>
+        <p className="text-secondary-900 col-span-6 mt-16 text-lg">No books!</p>
       )}
     </div>
   );
